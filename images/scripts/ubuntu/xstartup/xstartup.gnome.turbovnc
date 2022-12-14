@@ -1,0 +1,23 @@
+#!/bin/sh
+
+#bash -c \"gnome-session\"
+
+#while pgrep gnome-shell
+#do
+#    sleep 1;
+#done
+
+#xset -dpms &
+#xset -s noblank &
+#xset -s off &
+
+unset SESSION_MANAGER
+#exec /etc/X11/xinit/xinitrc
+unset DBUS_SESSION_BUS_ADDRESS
+
+#x-window-manager &
+
+gnome-panel &
+gnome-settings-daemon &
+metacity &
+gnome-terminal &

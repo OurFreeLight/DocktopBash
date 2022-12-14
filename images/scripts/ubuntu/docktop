@@ -1,0 +1,181 @@
+#!/usr/bin/env bash
+
+set -e
+
+COMMAND=${1:-""}
+VALUE1=${2:-""}
+VALUE2=${3:-""}
+
+# Display the help menu.
+help() {
+  echo "Docktop - Debian/Ubuntu Distribution
+Copyright (C) 2022, Freelight, Inc
+Version: ${DOCKTOP_VERSION}
+
+Usage: docktop <command> [value1] [value2]
+
+Commands:
+  clean               It will delete all files in the /tmp directory, run 
+                      autoremove, and clean the apt cache. Must be root.
+  backup_home         Backup the home directory. This will delete whatever 
+                      backup was made previously. If value1 is set, this 
+                      will specify another user's home directory to backup. 
+                      If value2 is set, the home directory will be backed 
+                      up to another path. Must be root to execute.
+  restore_home        Will restore the home directory back to image 
+                      default. WARNING - This will delete whatever is 
+                      currently in the home directory, USE WITH CAUTION! If 
+                      value1 is set, this will specify another user's home 
+                      directory to backup. If value2 is set, the home 
+                      directory will be backed up to another path. Must be 
+                      root to execute.
+  restore_home_no_rm  Will restore the home directory back to image 
+                      default. If  value1 is set, this will specify another 
+                      user's home directory to backup. If value2 is set, 
+                      the home directory will be backed up to another path. 
+                      Must be root to execute.
+  restore_xstartup    Will restore the TurboVNC xstartup configuration to 
+                      the user selected with value1.
+  vnc_start           Starts the VNC server.
+  vnc_kill            Kills the VNC server.
+  commit              Commit the changes from this container prior to running
+                      docker commit.
+  list_usb            List usb devices attached to this container.
+"
+
+  exit 1
+}
+
+# Check if the user is root.
+checkIfRoot() {
+  if [ $EUID -ne 0 ]; then
+    echo "This must be ran as root."
+
+    exit 1
+  fi
+}
+
+if [ "$COMMAND" == "" ] || [ "$COMMAND" == "--help" ]; then
+  help;
+fi
+
+if [ "$COMMAND" == "clean" ]; then
+  checkIfRoot
+
+  apt-get clean autoclean
+  apt-get autoremove -y --purge
+
+  rm -Rf /tmp/*
+
+  echo "Finished cleaning up."
+fi
+
+if [ "$COMMAND" == "backup_home" ]; then
+  checkIfRoot
+
+  if [ "$VALUE1" == "" ]; then
+    VALUE1=$USER
+  fi
+
+  if [ "$VALUE2" == "" ]; then
+    VALUE2="/etc/docktop/backup/$VALUE1/home_dir/"
+  fi
+
+  mkdir -p $VALUE2 2> /dev/null
+
+  SRC_DIR="/home/$VALUE1/"
+  DEST_DIR=$VALUE2
+
+  echo "Backing up home directory from $SRC_DIR to $DEST_DIR"
+
+  rm -Rf "$DEST_DIR"/*
+  rsync -avzlph --ignore-existing "$SRC_DIR" "$DEST_DIR"
+
+  echo "Backed up home directory $SRC_DIR to $DEST_DIR"
+fi
+
+if [ "$COMMAND" == "restore_home" ]; then
+  if [ "$VALUE1" == "" ]; then
+    VALUE1=$USER
+  fi
+
+  if [ "$VALUE2" == "" ]; then
+    VALUE2="/home/$VALUE1/"
+  fi
+
+  SRC_DIR="/etc/docktop/backup/$VALUE1/home_dir/"
+  DEST_DIR=$VALUE2
+
+  echo "Restoring from home directory $SRC_DIR to $DEST_DIR"
+
+  rm -Rf "$DEST_DIR"/*
+  rsync -avzlph --ignore-existing "$SRC_DIR" "$DEST_DIR"
+
+  echo "Restored home directory $DEST_DIR from $SRC_DIR"
+fi
+
+if [ "$COMMAND" == "restore_home_no_rm" ]; then
+  if [ "$VALUE1" == "" ]; then
+    VALUE1=$USER
+  fi
+
+  if [ "$VALUE2" == "" ]; then
+    VALUE2="/home/$VALUE1/"
+  fi
+
+  SRC_DIR="/etc/docktop/backup/$VALUE1/home_dir/"
+  DEST_DIR=$VALUE2
+
+  echo "Restoring from home directory $SRC_DIR to $DEST_DIR WITHOUT deleting"
+
+  rsync -avzlph --ignore-existing "$SRC_DIR" "$DEST_DIR"
+
+  echo "Restored home directory $DEST_DIR from $SRC_DIR"
+fi
+
+if [ "$COMMAND" == "restore_xstartup" ]; then
+  if [ "$VALUE1" == "" ]; then
+    VALUE1=$USER
+  fi
+
+  cp -f /etc/docktop/xstartup/xstartup.mate.turbovnc /home/$USER/.vnc/xstartup.turbovnc && \
+    chmod +x /home/$USER/.vnc/xstartup* && \
+    chown -R ${USER}:${USER} /home/$USER/.vnc
+fi
+
+if [ "$COMMAND" == "vnc_start" ]; then
+  vncserver $DISPLAY -SecurityTypes none -vgl -geometry $SCREEN_RESOLUTION
+fi
+
+if [ "$COMMAND" == "vnc_kill" ]; then
+  vncserver -kill $DISPLAY
+fi
+
+if [ "$COMMAND" == "commit" ]; then
+  if [ "$VALUE1" == "" ]; then
+    VALUE1=$USER
+  fi
+
+  vncserver -kill $DISPLAY
+
+  sudo docktop backup_home $VALUE1
+
+  echo "Completed. Ready for docker commit."
+fi
+
+if [ "$COMMAND" == "list_usb" ]; then
+  for DEV_PATH in $(find /sys/bus/usb/devices/usb*/ -name dev); do
+    (
+        SYSPATH="${DEV_PATH%/dev}"
+        DEV_NAME="$(udevadm info -q name -p $SYSPATH)"
+
+        eval "$(udevadm info -q property --export -p $SYSPATH)"
+
+        if [[ -z "$ID_SERIAL" ]]; then
+            exit
+        fi
+
+        echo "/dev/$DEV_NAME - $ID_SERIAL"
+    )
+  done
+fi

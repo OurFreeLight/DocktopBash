@@ -1,0 +1,9 @@
+#!/bin/sh
+
+echo "Starting session on display $DISPLAY"
+mate-session --display=$DISPLAY &
+
+sleep 5
+
+# Switched keypad return to act like the return button.
+xmodmap -e "keycode 108 = Return"
