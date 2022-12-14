@@ -1,5 +1,9 @@
 # Docktop Bash
-The repository for Docktop prototyping.
+Docktop allows you to run full desktops securely out of containers. Since containers are not running in virtual machines you get near native performance of your machine and GPU support.
+
+Unlike virtual machines, as the performance hit is minimal, we can even play games in these containers such as Counter-Strike: Global Offensive, Rocket League, Rust, and more.
+
+This repository is for Docktop prototyping.
 
 ## Getting started
 For the best experience, install Ubuntu MATE 22.04 or xUbuntu 22.04. Ubuntu 22.04 uses Wayland and as such has lots of graphical issues, Ubuntu MATE and xUbuntu do not use Wayland.
@@ -34,6 +38,8 @@ For increased security, you can install TurboVNC or Remmina, be sure to disable 
 ### Windows Installation 
 Windows is supported by using WSL2, however it has not been thoroughly tested. GPU support has not been tested yet. Both AMD/NVIDIA might work?
 
+WSL2 does use Hyper-V, which will use a virtual machine degrading performance.
+
 Be sure to install the Ubuntu 22.04 app from the Windows Store. Once installed, install Docker Desktop with WSL2 support at: https://docs.docker.com/desktop/install/windows-install/
 
 After Ubuntu 22.04 and Docker have been installed, follow the instructions for Ubuntu above. You will have to get Docker working inside of the Ubuntu WSL2 installation first.
@@ -47,6 +53,8 @@ The example run command to use VNC would be:
 
 ### Mac Installation
 Intel Mac is supported, however GPU support is not available at all. M2 Mac support should work, however this has not been tested. For M2 Macs there may be issues with trying to get containers to build.
+
+Mac's will use virtual machines when running the containers, degrading performance.
 
 Install Docker by following the guide at: https://docs.docker.com/desktop/install/mac-install/
 
